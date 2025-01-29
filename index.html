@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Flappy Bird</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #2c3e50;
+            font-family: Arial, sans-serif;
+        }
+
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 600px;
+            background: #3498db;
+            overflow: hidden;
+        }
+
+        #bird {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #f1c40f;
+            left: 50px;
+            border-radius: 50%;
+            transition: transform 0.1s;
+        }
+
+        .pipe {
+            position: absolute;
+            width: 60px;
+            background: #2ecc71;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 40px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 1;
+        }
+
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background: #27ae60;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score">0</div>
+        <div id="start-screen">
+            <h1>Flappy Bird</h1>
+            <p>Press Space or Click to start and jump</p>
+            <button onclick="startGame()">Start Game</button>
+        </div>
+        <div id="bird"></div>
+    </div>
+
+    <script>
+        const bird = document.getElementById('bird');
+        const gameContainer = document.getElementById('game-container');
+        const scoreElement = document.getElementById('score');
+        const startScreen = document.getElementById('start-screen');
+
+        let birdY = 300;
+        let velocity = 0;
+        let gravity = 0.5;
+        let isGameRunning = false;
+        let score = 0;
+        let pipeCreationInterval;
+        let gameLoop;
+
+        function startGame() {
+            // Reset game state
+            isGameRunning = true;
+            score = 0;
+            birdY = 300;
+            velocity = 0;
+            scoreElement.textContent = '0';
+            startScreen.style.display = 'none';
+            
+            // Remove existing pipes
+            document.querySelectorAll('.pipe').forEach(pipe => pipe.remove());
+            
+            // Start game loops
+            gameLoop = setInterval(updateGame, 20);
+            pipeCreationInterval = setInterval(createPipePair, 1500);
+            
+            // Initial jump
+            jump();
+        }
+
+        function jump() {
+            if (!isGameRunning) return;
+            velocity = -8;
+            bird.style.transform = 'rotate(-30deg)';
+        }
+
+        function updateGame() {
+            if (!isGameRunning) return;
+
+            // Update bird physics
+            velocity += gravity;
+            birdY += velocity;
+            bird.style.top = `${birdY}px`;
+            bird.style.transform = `rotate(${velocity * 4}deg)`;
+
+            // Check collisions
+            if (checkCollision() || birdY < 0 || birdY > 570) {
+                gameOver();
+            }
+
+            // Move pipes
+            document.querySelectorAll('.pipe').forEach(pipe => {
+                const pipeX = parseFloat(pipe.style.left) - 2;
+                pipe.style.left = `${pipeX}px`;
+
+                // Score counting
+                if (pipe.dataset.scored !== 'true' && pipeX + 60 < 50) {
+                    score++;
+                    scoreElement.textContent = score;
+                    pipe.dataset.scored = 'true';
+                }
+
+                // Remove off-screen pipes
+                if (pipeX < -60) {
+                    pipe.remove();
+                }
+            });
+        }
+
+        function createPipePair() {
+            const gapHeight = 150;
+            const gapPosition = Math.random() * (400 - gapHeight);
+
+            // Top pipe
+            const topPipe = document.createElement('div');
+            topPipe.className = 'pipe';
+            topPipe.style.height = `${gapPosition}px`;
+            topPipe.style.top = '0';
+            topPipe.style.left = '400px';
+
+            // Bottom pipe
+            const bottomPipe = document.createElement('div');
+            bottomPipe.className = 'pipe';
+            bottomPipe.style.height = `${400 - gapPosition - gapHeight}px`;
+            bottomPipe.style.bottom = '0';
+            bottomPipe.style.left = '400px';
+
+            gameContainer.appendChild(topPipe);
+            gameContainer.appendChild(bottomPipe);
+        }
+
+        function checkCollision() {
+            const birdRect = bird.getBoundingClientRect();
+            
+            return Array.from(document.querySelectorAll('.pipe')).some(pipe => {
+                const pipeRect = pipe.getBoundingClientRect();
+                return !(birdRect.right < pipeRect.left || 
+                        birdRect.left > pipeRect.right || 
+                        birdRect.bottom < pipeRect.top || 
+                        birdRect.top > pipeRect.bottom);
+            });
+        }
+
+        function gameOver() {
+            isGameRunning = false;
+            clearInterval(gameLoop);
+            clearInterval(pipeCreationInterval);
+            startScreen.style.display = 'block';
+            startScreen.innerHTML = `
+                <h1>Game Over!</h1>
+                <p>Score: ${score}</p>
+                <button onclick="startGame()">Play Again</button>
+            `;
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') jump();
+        });
+
+        document.addEventListener('click', jump);
+    </script>
+</body>
+</html>
